@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Traffic Congestion Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        table {
+            margin: auto;
+            border-collapse: collapse;
+            width: 60%;
+            background-color: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 20px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        .alert-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff4d4d;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🚦 Real-Time Traffic Congestion Dashboard</h1>
+
+    <table>
+        <tr>
+            <th>Location</th>
+            <th>Vehicle Count</th>
+            <th>Average Speed (km/h)</th>
+            <th>Congestion Level</th>
+        </tr>
+        <tr>
+            <td id="location">--</td>
+            <td id="vehicleCount">--</td>
+            <td id="avgSpeed">--</td>
+            <td id="congestionLevel">--</td>
+        </tr>
+    </table>
+
+    <!-- Floating alert -->
+    <div id="alertBox" class="alert-box"></div>
+
+    <script>
+        function showAlert(message) {
+            const alertBox = document.getElementById("alertBox");
+            alertBox.innerText = message;
+            alertBox.style.display = "block";
+            setTimeout(() => {
+                alertBox.style.display = "none";
+            }, 3000); // Hide after 3 seconds
+        }
+
+        // Fetch latest traffic data every 5 seconds
+        setInterval(() => {
+            fetch("/get_latest_data")
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById("location").innerText = data.location;
+                    document.getElementById("vehicleCount").innerText = data.vehicle_count;
+                    document.getElementById("avgSpeed").innerText = data.average_speed;
+                    document.getElementById("congestionLevel").innerText = data.congestion;
+
+                    // Step 6: Show congestion alert if High
+                    if (data.congestion === "High") {
+                        showAlert("⚠️ High Traffic at " + data.location);
+                    }
+                })
+                .catch(err => console.error("Error fetching data:", err));
+        }, 5000);
+    </script>
+
+</body>
+</html>
+
