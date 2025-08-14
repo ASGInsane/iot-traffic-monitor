@@ -1,75 +1,76 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify, render_template
+from flask_cors import CORS
 import requests
 import os
-import time
 
 app = Flask(__name__)
+CORS(app)
 
-# Load Google API Key (You can also set it as an env variable)
-GOOGLE_API_KEY = "YOUR_API_KEY_HERE"
+# Get API key from environment variable (set this in Render)
+GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_KEY")
 
-# Store latest data
-latest_data = {
-    "location": "Mumbai to Navi Mumbai",
-    "vehicle_count": "N/A",  # Google doesn't give count, we can estimate later
-    "average_speed": 0,
-    "congestion": "Low"
-}
 
-def fetch_google_traffic():
-    origin = "Mumbai"
-    destination = "Navi Mumbai"
-    url = (
-        "https://maps.googleapis.com/maps/api/distancematrix/json"
-        f"?origins={origin}&destinations={destination}"
-        f"&departure_time=now&traffic_model=best_guess&key={GOOGLE_API_KEY}"
-    )
-
+# Function to get real-time traffic data from Google Maps API
+def get_traffic_data(origin, destination):
     try:
+        url = (
+            "https://maps.googleapis.com/maps/api/distancematrix/json"
+            f"?origins={origin}&destinations={destination}"
+            f"&departure_time=now&key={GOOGLE_API_KEY}"
+        )
+
         response = requests.get(url)
         data = response.json()
 
-        if "rows" in data and data["rows"][0]["elements"][0]["status"] == "OK":
+        if data.get("status") == "OK":
             element = data["rows"][0]["elements"][0]
-            normal_time = element["duration"]["value"]  # in seconds
-            traffic_time = element["duration_in_traffic"]["value"]  # in seconds
+            if element.get("status") == "OK":
+                distance = element["distance"]["text"]
+                duration = element["duration"]["text"]
+                duration_in_traffic = element.get("duration_in_traffic", {}).get("text", duration)
 
-            # Estimate speed in km/h (assuming route distance in meters)
-            distance_m = element["distance"]["value"]
-            speed_kmh = (distance_m / 1000) / (traffic_time / 3600)
-
-            latest_data["average_speed"] = round(speed_kmh, 2)
-
-            # Simple congestion logic based on delay percentage
-            delay_ratio = (traffic_time - normal_time) / normal_time
-            if delay_ratio > 0.5:
-                latest_data["congestion"] = "High"
-            elif delay_ratio > 0.2:
-                latest_data["congestion"] = "Medium"
-            else:
-                latest_data["congestion"] = "Low"
-        else:
-            latest_data["congestion"] = "Error fetching data"
+                return {
+                    "location": f"{origin} to {destination}",
+                    "distance": distance,
+                    "duration": duration,
+                    "duration_in_traffic": duration_in_traffic,
+                    "congestion": get_congestion_level(duration, duration_in_traffic)
+                }
+        return {"error": "Unable to fetch data from Google Maps API"}
     except Exception as e:
-        latest_data["congestion"] = "API Error"
-        print(e)
+        return {"error": str(e)}
 
-# Background loop to refresh data every 1 minute
-def background_update():
-    while True:
-        fetch_google_traffic()
-        time.sleep(60)
 
+# Function to determine congestion level based on travel time difference
+def get_congestion_level(normal_time, traffic_time):
+    try:
+        normal_minutes = int(normal_time.split()[0])
+        traffic_minutes = int(traffic_time.split()[0])
+
+        if traffic_minutes <= normal_minutes * 1.2:
+            return "Low"
+        elif traffic_minutes <= normal_minutes * 1.5:
+            return "Moderate"
+        else:
+            return "High"
+    except:
+        return "Unknown"
+
+
+# API route for traffic data
+@app.route("/traffic")
+def traffic():
+    origin = "Mumbai"
+    destination = "Navi Mumbai"
+    data = get_traffic_data(origin, destination)
+    return jsonify(data)
+
+
+# Optional home page (if you have index.html in templates/)
 @app.route("/")
-def index():
+def home():
     return render_template("index.html")
 
-@app.route("/get_latest_data")
-def get_latest_data():
-    return jsonify(latest_data)
 
 if __name__ == "__main__":
-    import threading
-    threading.Thread(target=background_update, daemon=True).start()
     app.run(debug=True)
-
