@@ -9,7 +9,6 @@ CORS(app)
 # Get API key from environment variable (set this in Render)
 GOOGLE_API_KEY = os.getenv("GOOGLE_MAPS_KEY")
 
-
 # Function to get real-time traffic data from Google Maps API
 def get_traffic_data(origin, destination):
     try:
@@ -18,7 +17,6 @@ def get_traffic_data(origin, destination):
             f"?origins={origin}&destinations={destination}"
             f"&departure_time=now&key={GOOGLE_API_KEY}"
         )
-
         response = requests.get(url)
         data = response.json()
 
@@ -40,7 +38,6 @@ def get_traffic_data(origin, destination):
     except Exception as e:
         return {"error": str(e)}
 
-
 # Function to determine congestion level based on travel time difference
 def get_congestion_level(normal_time, traffic_time):
     try:
@@ -56,21 +53,18 @@ def get_congestion_level(normal_time, traffic_time):
     except:
         return "Unknown"
 
-
-# API route for traffic data
-@app.route("/traffic")
-def traffic():
+# API route for frontend JS
+@app.route("/get_latest_data")
+def get_latest_data():
     origin = "Mumbai"
     destination = "Navi Mumbai"
     data = get_traffic_data(origin, destination)
     return jsonify(data)
 
-
-# Optional home page (if you have index.html in templates/)
+# Optional home page
 @app.route("/")
 def home():
     return render_template("index.html")
-
 
 if __name__ == "__main__":
     app.run(debug=True)

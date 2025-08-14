@@ -3,100 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real-Time Traffic Congestion Dashboard</title>
+    <title>Traffic Congestion Monitor</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f6f8;
-            margin: 0;
-            padding: 20px;
+            margin: 40px;
+            background-color: #f4f4f9;
+            color: #333;
         }
         h1 {
             text-align: center;
-            color: #333;
+            color: #2c3e50;
         }
-        table {
-            margin: auto;
-            border-collapse: collapse;
-            width: 60%;
-            background-color: white;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .traffic-card {
+            background-color: #fff;
+            padding: 20px;
+            max-width: 500px;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
         }
-        th, td {
-            padding: 12px 20px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
+        .traffic-card p {
+            font-size: 18px;
+            margin: 10px 0;
         }
-        th {
-            background-color: #007bff;
-            color: white;
-        }
-        .alert-box {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #ff4d4d;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
+        .congestion-high {
+            color: red;
             font-weight: bold;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-            display: none;
-            z-index: 1000;
+        }
+        .congestion-moderate {
+            color: orange;
+            font-weight: bold;
+        }
+        .congestion-low {
+            color: green;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-
-    <h1>🚦 Real-Time Traffic Congestion Dashboard</h1>
-
-    <table>
-        <tr>
-            <th>Location</th>
-            <th>Vehicle Count</th>
-            <th>Average Speed (km/h)</th>
-            <th>Congestion Level</th>
-        </tr>
-        <tr>
-            <td id="location">--</td>
-            <td id="vehicleCount">--</td>
-            <td id="avgSpeed">--</td>
-            <td id="congestionLevel">--</td>
-        </tr>
-    </table>
-
-    <!-- Floating alert -->
-    <div id="alertBox" class="alert-box"></div>
+    <h1>Real-Time Traffic Congestion</h1>
+    <div class="traffic-card">
+        <p><strong>Location:</strong> <span id="location">Loading...</span></p>
+        <p><strong>Distance:</strong> <span id="distance">Loading...</span></p>
+        <p><strong>Duration:</strong> <span id="duration">Loading...</span></p>
+        <p><strong>Congestion Level:</strong> <span id="congestion" class="">Loading...</span></p>
+    </div>
 
     <script>
-        function showAlert(message) {
-            const alertBox = document.getElementById("alertBox");
-            alertBox.innerText = message;
-            alertBox.style.display = "block";
-            setTimeout(() => {
-                alertBox.style.display = "none";
-            }, 3000); // Hide after 3 seconds
+        async function fetchTrafficData() {
+            try {
+                const response = await fetch("/get_latest_data");
+                const data = await response.json();
+
+                console.log(data); // For debugging
+
+                document.getElementById("location").innerText = data.location;
+                document.getElementById("distance").innerText = data.distance;
+                document.getElementById("duration").innerText = data.duration_in_traffic;
+                const congestionEl = document.getElementById("congestion");
+                congestionEl.innerText = data.congestion;
+
+                // Apply color based on congestion level
+                congestionEl.className = '';
+                if (data.congestion === "High") {
+                    congestionEl.classList.add("congestion-high");
+                    alert("⚠️ High Traffic at " + data.location);
+                } else if (data.congestion === "Moderate") {
+                    congestionEl.classList.add("congestion-moderate");
+                } else if (data.congestion === "Low") {
+                    congestionEl.classList.add("congestion-low");
+                }
+
+            } catch (error) {
+                console.error("Error fetching traffic data:", error);
+            }
         }
 
-        // Fetch latest traffic data every 5 seconds
-        setInterval(() => {
-            fetch("/get_latest_data")
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("location").innerText = data.location;
-                    document.getElementById("vehicleCount").innerText = data.vehicle_count;
-                    document.getElementById("avgSpeed").innerText = data.average_speed;
-                    document.getElementById("congestionLevel").innerText = data.congestion;
-
-                    // Step 6: Show congestion alert if High
-                    if (data.congestion === "High") {
-                        showAlert("⚠️ High Traffic at " + data.location);
-                    }
-                })
-                .catch(err => console.error("Error fetching data:", err));
-        }, 5000);
+        // Fetch data every 30 seconds
+        setInterval(fetchTrafficData, 30000);
+        fetchTrafficData();
     </script>
-
 </body>
 </html>
-
